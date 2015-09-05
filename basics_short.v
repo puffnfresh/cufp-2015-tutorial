@@ -15,7 +15,8 @@ Inductive bool : Type :=
     logic.  Here something can be true, false and unknown. *)
 
 Inductive trivalue : Type :=
-  (* Fill in here *).
+| tvbool : bool -> trivalue
+| unknown : trivalue.
 
 (** We can write functions that operate on [bool]s by simple pattern
     matching, using the [match] keyword. *)
@@ -37,7 +38,11 @@ Definition andb (b1 b2: bool) : bool := if b1 then b2 else false.
 (** Exercise: Define xor (exclusive or) . *)
 
 Definition xorb (b1 b2 : bool) : bool :=
-  true (* Change this! *).
+  match b1, b2 with
+  | true, true => false
+  | false, false => false
+  | _, _ => true
+  end.
 
 (** New tactics
     -----------
@@ -50,12 +55,13 @@ Definition xorb (b1 b2 : bool) : bool :=
     - [reflexivity]: Prove that some expression [x] is equal to itself. *)
 
 Example andb_false : forall b, andb false b = false.
-Proof. Admitted.
+Proof. simpl. reflexivity. Qed.
 
 (** Exercise: Prove this. *)
 Theorem orb_true_l :
   forall b, orb true b = true.
-Proof. (* Fill in here *) Admitted.
+Proof. intros. simpl. reflexivity.
+Qed.
 
 (** New tactics
     -----------
@@ -65,17 +71,33 @@ Proof. (* Fill in here *) Admitted.
       separately. *)
 
 Lemma double_negation : forall b : bool, negb (negb b) = b.
-Proof. Admitted.
+Proof. intros. destruct b. simpl. reflexivity. simpl. reflexivity.
+Qed.
 
 Theorem andb_commutative : forall b1 b2 : bool, andb b1 b2 = andb b2 b1.
-Proof. Admitted.
+Proof.
+  intros.
+  destruct b1.
+  simpl.
+  destruct b2.
+  simpl.
+  reflexivity.
+  simpl.
+  reflexivity.
+  simpl.
+  destruct b2.
+  simpl.
+  reflexivity.
+  simpl.
+  reflexivity.
+Qed.
 
 (** Exercise: Show that false is an identity element for xor -- that
     is, [xor false b] is equal to [b] *)
 
-Theorem xorb_false : False. (* Replace [False] with claim. *)
-Proof.
-Admitted. (* fill in proof *)
+Theorem xorb_false : forall b : bool, xorb false b = b. (* Replace [False] with claim. *)
+Proof. intros. simpl. destruct b. reflexivity. reflexivity.
+Qed.
 
 (** New tactics
     -----------
@@ -92,14 +114,14 @@ Theorem rewrite_example : forall b1 b2 b3 b4,
   b1 = b4 ->
   b2 = b3 ->
   andb b1 b2 = andb b3 b4.
-Proof. Admitted.
+Proof. intros. rewrite <- H0. rewrite -> H. rewrite -> andb_commutative. reflexivity.
+Qed.
 
 (** Exercise: Show that if [b1 = b2] then [xorb b1 b2] is equal to
     [false] *)
 
-Theorem xorb_same : False. (* Replace [False] by claim *)
-Proof.
-  Admitted. (* fill in proof *)
+Theorem xorb_same : forall b1 b2, b1 = b2 -> xorb b1 b2 = false. (* Replace [False] by claim *)
+Proof. intros. simpl. rewrite -> H. destruct b2. simpl. reflexivity. simpl. reflexivity. Qed.
 
 End Bool.
 
@@ -137,7 +159,9 @@ Notation "x * y" := (mult x y) (at level 40, left associativity).
 (* Fill in notation here *)
 
 Lemma plus_0_l: forall n : nat, O + n = n.
-Proof. Admitted.
+Proof. simpl. intros. reflexivity.
+Qed.
+  
 
 (**
     New tactic
@@ -148,10 +172,12 @@ Proof. Admitted.
     case. *)
 
 Lemma plus_O_r: forall n : nat, n + O = n.
-Proof. Admitted.
+Proof. intros. induction n. simpl. reflexivity. simpl. rewrite -> IHn. reflexivity.
+Qed.
 
 Theorem plus_assoc: forall m n o, m + (n + o) = (m + n) + o.
-Proof. Admitted.
+Proof. intros. induction m. simpl. reflexivity. simpl. rewrite -> IHm. reflexivity.
+Qed.
 
 (** Take-home exericse: Try to do induction on [n] and [o] in the
     above proof, and see where it fails. *)
@@ -232,15 +258,35 @@ Qed.
 
 Lemma eq_beq_nat :
   forall m n, beq_nat m n = true -> m = n.
-Proof. Admitted.
+Proof.
+  intros.
+  revert n H.
+  induction m.
+  intros.
+  destruct n.
+  reflexivity.
+  discriminate.
+  intros.
+  destruct n.
+  discriminate.
+  apply IHm in H.
+  rewrite H.
+  reflexivity.
+Qed.
+  
 
 (** Exercise: Prove this statement. *)
 
 Lemma plus_eq_0 :
   forall n m,
     n + m = O -> n = O.
-Proof. (* Fill in here *) Admitted.
-
+Proof.
+  intros.
+  destruct n.
+  reflexivity.
+  discriminate.
+Qed.
+  
 End Nat.
 
 
@@ -287,7 +333,10 @@ Notation "[ x ; .. ; y ]" := (cons x .. (cons y nil) ..).
 (* Exercise: Define "snoc", which adds an element to the end of a list. *)
 
 Fixpoint snoc {T} (l : list T) (x : T) : list T :=
-  [] (* Fill in here *).
+  match l with
+  | [] => [x]
+  | h :: l1 => h :: (snoc l1 x)
+  end.
 
 Fixpoint app {T} (l1 l2 : list T) : list T :=
   match l1 with
@@ -300,7 +349,21 @@ Notation "l1 ++ l2" := (app l1 l2) (at level 60, right associativity).
 Lemma app_assoc :
   forall T (l1 l2 l3 : list T),
     l1 ++ (l2 ++ l3) = (l1 ++ l2) ++ l3.
-Proof. Admitted.
+Proof.
+  intros.
+  induction l1.
+  simpl.
+  reflexivity.
+  induction l2.
+  simpl.
+  rewrite <- IHl1.
+  simpl.
+  reflexivity.
+  simpl.
+  rewrite <- IHl1.
+  simpl.
+  reflexivity.
+Qed.
 
 (* Exercise *)
 
@@ -308,8 +371,14 @@ Lemma snoc_app :
   forall T (l : list T) (x : T),
     snoc l x = l ++ [x].
 Proof.
-  (* Fill in here *)
-Admitted.
+  intros.
+  induction l.
+  simpl.
+  reflexivity.
+  simpl.
+  rewrite IHl.
+  reflexivity.
+Qed.
 
 End List.
 
@@ -333,6 +402,22 @@ Fixpoint tr_rev_aux {T} (l acc : list T) : list T :=
 
 Definition tr_rev {T} (l: list T) := tr_rev_aux l [].
 
+Lemma tr_rev_aux_correct :
+  forall (T : Type) (l1 l2 : list T),
+    tr_rev_aux l1 l2
+    = rev l1 ++ l2.
+Proof.
+  intros.
+  revert l2.
+  induction l1.
+  reflexivity.
+  simpl. 
+  intros. 
+  rewrite IHl1.
+  rewrite <- app_assoc.
+  reflexivity.
+Qed.
+
 (** New Tactic
     ----------
 
@@ -343,7 +428,18 @@ Definition tr_rev {T} (l: list T) := tr_rev_aux l [].
 Lemma tr_rev_correct :
   forall T (l : list T),
     tr_rev l = rev l.
-Proof. Admitted.
+Proof.
+  intros.
+  unfold tr_rev.
+  induction l.
+  simpl.
+  reflexivity.
+  rewrite -> tr_rev_aux_correct.
+  simpl.
+  rewrite <- app_assoc.
+  simpl.
+  reflexivity.
+Qed.
 
 (* ###################################################################### *)
 (** * Dependently Typed Programming *)
